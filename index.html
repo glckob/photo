@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>កម្មវិធី​កាត់​រូបថត​សិស្ស (Student Photo Splitter)</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load face-api.js -->
+    <script src="https://raw.githack.com/justadudewhohacks/face-api.js/master/dist/face-api.min.js"></script>
+    
+    <!-- 3. Load JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- 4. Load Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 5. Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Khmer+Os+Muol+Light&family=Khmer+Os+Siemreap&display=swap" rel="stylesheet">
+    
+    <!-- 6. Custom CSS -->
+    <link rel="stylesheet" href="Style.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col font-siemreap">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-[1600px] mx-auto px-4">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold text-blue-600 font-heading" data-lang-key="appTitle">កម្មវិធី​កាត់​រូប</span>
+                </div>
+                
+                <div class="flex items-center gap-4 hidden md:flex">
+                    <button id="nav-splitter-button" class="px-3 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 font-heading" data-lang-key="navSplitter">
+                        កម្មវិធី​កាត់​រូប
+                    </button>
+                    <button id="nav-post-button" class="hidden px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300 font-heading" data-lang-key="navPost">
+                        ផ្ទាំង​គ្រប់គ្រង (Post)
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Language Toggle -->
+                    <div class="language-toggle">
+                        <input type="checkbox" id="lang-toggle-checkbox">
+                        <label for="lang-toggle-checkbox" class="toggle-label">
+                            <span class="toggle-text-km">KH</span>
+                            <div class="toggle-thumb"></div>
+                            <span class="toggle-text-en">EN</span>
+                        </label>
+                    </div>
+
+                    <button id="nav-login-button" class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700" data-lang-key="navLogin">
+                        ចូល (Admin)
+                    </button>
+                    <button id="nav-logout-button" class="hidden px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700" data-lang-key="navLogout">
+                        ចេញ (Logout)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="flex-grow p-4 md:p-6">
+
+        <!-- View 1: Splitter App (3 Column Layout) -->
+        <div id="splitter-view" class="max-w-[1600px] mx-auto">
+            <div class="flex flex-col lg:flex-row gap-6 items-start">
+                
+                <!-- LEFT COLUMN: User Commands / Comments (20%) -->
+                <div class="w-full lg:w-1/5 lg:sticky lg:top-[88px] order-2 lg:order-1 h-[600px] lg:h-[calc(100vh-120px)] flex flex-col bg-white rounded-lg shadow-xl overflow-hidden">
+                    <div class="p-4 bg-blue-50 border-b border-blue-100">
+                        <h2 class="text-lg font-bold text-blue-700 font-heading" data-lang-key="commentsTitle">មតិយោបល់ (User Command)</h2>
+                    </div>
+                    
+                    <!-- Comments List (Scrollable) -->
+                    <div id="comments-list" class="flex-grow overflow-y-auto p-4 space-y-3 bg-gray-50">
+                        <!-- Comments will appear here -->
+                        <div class="text-center text-gray-400 text-sm mt-10">កំពុង​ផ្ទុក​មតិ...</div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="p-3 bg-white border-t border-gray-200">
+                        <div id="comment-auth-section">
+                            <!-- Show this if NOT logged in -->
+                            <button id="btn-google-login" class="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded hover:bg-gray-50 transition-colors shadow-sm">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                                <span data-lang-key="loginGoogle">ចូល​តាម Google ដើម្បី​បញ្ចេញ​មតិ</span>
+                            </button>
+                        </div>
+                        
+                        <div id="comment-input-section" class="hidden">
+                            <!-- Show this if Logged in -->
+                            <div class="flex gap-2 mb-2 items-center">
+                                <img id="user-avatar" src="" class="w-6 h-6 rounded-full" alt="Avatar">
+                                <span id="user-name" class="text-xs text-gray-600 truncate font-medium">User</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="comment-input" class="flex-grow px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="...">
+                                <button id="btn-send-comment" class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CENTER COLUMN: Main App (60%) -->
+                <div class="w-full lg:w-3/5 order-1 lg:order-2 bg-white p-6 sm:p-8 rounded-lg shadow-xl">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-4 font-heading" data-lang-key="mainTitle">
+                        កម្មវិធី​កាត់​រូបថត​សិស្ស
+                    </h1>
+                    <p class="text-center text-gray-600 mb-6" data-lang-key="mainSubtitle">
+                        Upload រូបថត​សន្លឹក (ឧ. ទម្រង់​ពាក្យ​សុំ) ហើយ​កម្មវិធី​នឹង​ស្វែងរក និង​កាត់​រូបថត​សិស្ស​ម្នាក់ៗ​ចេញ​មក។
+                    </p>
+
+                    <!-- Step 1: Status -->
+                    <div id="status" class="flex items-center justify-center gap-3 p-4 rounded-lg text-white mb-6 transition-all duration-300 bg-blue-500">
+                        <div id="status-spinner" class="spinner w-6 h-6"></div>
+                        <span id="status-text" class="font-medium" data-lang-key="statusLoading">កំពុង​ដំណើរការ AI Models...</span>
+                    </div>
+
+                    <!-- Step 2: Upload -->
+                    <div id="upload-section" class="mb-6 opacity-50 pointer-events-none text-center">
+                        <label for="imageUpload" class="block text-sm font-medium text-gray-700 mb-2" data-lang-key="uploadLabel">១. ជ្រើសរើស​រូបថត​សន្លឹក​របស់​អ្នក៖</label>
+                        <input type="file" id="imageUpload" accept="image/png, image/jpeg" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    </div>
+
+                    <!-- Step 3 & 4: Padding Sliders -->
+                    <div id="settings-section" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 opacity-50 pointer-events-none">
+                        <div>
+                            <label for="paddingSliderY" class="block text-sm font-medium text-gray-700 mb-2" data-lang-key="paddingYLabel">
+                                ៣. កំណត់​គែម​កម្ពស់ (លើ/ក្រោម): <span id="paddingValueY" class="font-bold text-blue-600">30%</span>
+                            </label>
+                            <input type="range" id="paddingSliderY" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="paddingSliderX" class="block text-sm font-medium text-gray-700 mb-2" data-lang-key="paddingXLabel">
+                                ៤. កំណត់​គែម​ទទឹង (ឆ្វេង/ស្ដាំ): <span id="paddingValueX" class="font-bold text-blue-600">30%</span>
+                            </label>
+                            <input type="range" id="paddingSliderX" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Filename Mode -->
+                    <div id="filename-mode-section" class="mb-6 opacity-50 pointer-events-none">
+                        <label class="block text-sm font-medium text-gray-700 mb-2" data-lang-key="filenameModeLabel">៥. កំណត់​របៀប​ตั้ง​ឈ្មោះ​ឯកសារ (Filename Mode):</label>
+                        <div class="flex flex-wrap gap-x-4 gap-y-2">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="filenameMode" value="auto" class="h-4 w-4 text-blue-600" checked>
+                                <span class="ml-2 text-sm text-gray-700" data-lang-key="filenameModeAuto">ស្វ័យប្រវត្តិ</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="filenameMode" value="manual" class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-sm text-gray-700" data-lang-key="filenameModeManual">វាយ​បញ្ចូល​ដោយ​ដៃ</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="filenameMode" value="none" class="h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-sm text-gray-700" data-lang-key="filenameModeNone">មិន​ដាក់​ឈ្មោះ</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Step 6: Detect Button -->
+                    <button id="detectButton" class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all shadow-md mb-6 font-heading" disabled data-lang-key="detectButton">
+                        ៦. ស្វែងរក និង​កាត់​រូបថត
+                    </button>
+
+                    <!-- Preview & Results -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div id="preview-container" class="hidden">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2 font-heading" data-lang-key="originalPhotoTitle">រូបថត​ដើម</h3>
+                            <div class="relative w-full max-h-[500px] overflow-auto border-2 border-gray-300 rounded-lg">
+                                <img id="imagePreview" src="#" alt="Image Preview" class="w-full h-auto">
+                            </div>
+                            <!-- Ad Below Original Image -->
+                            <div id="ad-banner-left" class="mt-6 hidden">
+                                <h3 class="text-lg font-semibold text-gray-700 mb-2 font-heading" data-lang-key="adTitle">ពាណិជ្ជកម្ម</h3>
+                                <div id="ad-banner-left-content" class="rounded-lg shadow-md overflow-hidden"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="results-container" class="hidden">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold text-gray-700 font-heading" data-lang-key="croppedPhotoTitle">រូបថត​ដែល​កាត់​បាន</h3>
+                                <button id="downloadAllButton" class="hidden bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition-all" data-lang-key="downloadAllButton">
+                                    ទាញយក​ទាំងអស់ (ZIP)
+                                </button>
+                            </div>
+                            <p id="results-count" class="text-gray-600 mb-4 text-sm"></p>
+                            <div id="results-scroll" class="h-[550px] overflow-y-auto border border-gray-200 rounded-lg p-4">
+                                <div id="results" class="grid grid-cols-1 gap-4"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Ads & Counter (20%) -->
+                <div class="w-full lg:w-1/5 order-3 lg:order-3 lg:sticky lg:top-[88px] space-y-6">
+                    <!-- Flag Counter -->
+                    <div class="bg-white p-4 rounded-lg shadow-xl">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-4 font-heading text-center" data-lang-key="visitorsTitle">អ្នក​ទស្សនា</h2>
+                        <div class="flex justify-center overflow-hidden">
+                            <a href="https://info.flagcounter.com/rKwV"><img src="https://s01.flagcounter.com/count2/rKwV/bg_FFFFFF/txt_000000/border_CCCCCC/columns_3/maxflags_12/viewers_0/labels_0/pageviews_1/flags_0/percent_0/" alt="Flag Counter" border="0"></a>
+                        </div>
+                    </div>
+                    <!-- Ads -->
+                    <div class="bg-white p-4 rounded-lg shadow-xl">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-4 font-heading text-center" data-lang-key="adsSidebarTitle">ពាណិជ្ជកម្ម</h2>
+                        <div id="ad-banner-right" class="space-y-4"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- View 2: Admin Post Panel -->
+        <div id="post-view" class="hidden max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-xl">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6 font-heading" data-lang-key="adminTitle">
+                គ្រប់គ្រង​ផ្ទាំង​ពាណិជ្ជកម្ម
+            </h1>
+            <form id="post-form" class="mb-8 p-4 border border-green-200 rounded-lg bg-green-50">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 font-heading" data-lang-key="adminAddTitle">បន្ថែម​ពាណិជ្ជកម្ម​ថ្មី</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1" data-lang-key="imgUrlLabel">Image URL:</label>
+                    <input type="url" id="ad-img-url" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1" data-lang-key="descLabel">Post Description:</label>
+                    <input type="text" id="ad-description" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <button type="submit" id="post-submit-button" class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700" data-lang-key="submitPostButton">
+                    បញ្ជូន (Submit Post)
+                </button>
+                <p id="post-form-message" class="text-sm text-center mt-2"></p>
+            </form>
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 font-heading" data-lang-key="adminExistingTitle">ពាណិជ្ជកម្ម​បច្ចុប្បន្ន</h2>
+            <div id="admin-ads-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Login Modal (Admin) -->
+    <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md relative">
+            <button id="login-modal-close" class="absolute top-2 right-2 text-gray-500 text-2xl">&times;</button>
+            <h2 class="text-2xl font-bold text-center mb-6 font-heading" data-lang-key="loginTitle">ចូល​សម្រាប់ Admin</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-700 mb-1" data-lang-key="emailLabel">Email:</label>
+                    <input type="email" id="login-email" class="w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm text-gray-700 mb-1" data-lang-key="passwordLabel">Password:</label>
+                    <input type="password" id="login-password" class="w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <button type="submit" id="login-submit-button" class="w-full py-2 bg-green-600 text-white rounded-md" data-lang-key="loginSubmit">ចូល</button>
+                <p id="login-error-message" class="text-sm text-red-600 text-center mt-4"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Post Modal -->
+    <div id="edit-post-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md relative">
+            <button id="edit-post-modal-close" class="absolute top-2 right-2 text-gray-500 text-2xl">&times;</button>
+            <h2 class="text-2xl font-bold text-center mb-6 font-heading" data-lang-key="editTitle">កែប្រែ​ពាណិជ្ជកម្ម</h2>
+            <form id="edit-post-form">
+                <input type="hidden" id="edit-post-id">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-700 mb-1" data-lang-key="editImgUrlLabel">Image URL:</label>
+                    <input type="url" id="edit-ad-img-url" class="w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm text-gray-700 mb-1" data-lang-key="editDescLabel">Post Description:</label>
+                    <input type="text" id="edit-ad-description" class="w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <button type="submit" id="edit-post-submit-button" class="w-full py-2 bg-yellow-500 text-white rounded-md" data-lang-key="editSaveButton">រក្សាទុក</button>
+                <p id="edit-post-form-message" class="text-sm text-center mt-4"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ad Display Modal (Full Screen) -->
+    <div id="ad-content-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-4 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+            <button id="ad-modal-close" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+            <img id="ad-modal-image" src="" class="w-full h-auto max-h-[70vh] object-contain mx-auto mb-4 rounded">
+            <p id="ad-modal-description" class="text-xl text-center text-gray-800 font-heading"></p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300 py-8 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="mb-2" data-lang-key="footerLine1">កម្មវិធីនេះប្រើប្រាស់ដោយមិនគិតថ្លៃ។</p>
+            <p class="mb-4" data-lang-key="footerLine2">បង្កើតឡើងដោយៈ លោកគ្រូ វង្ស សាណូវុទ្ធ</p>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <span data-lang-key="footerContact">ទំនាក់ទំនង: 0972444424</span>
+                <a href="https://t.me/lazytospeak" target="_blank" class="hover:text-white underline">Telegram</a>
+                <a href="https://web.facebook.com/SanovuthVong/?viewas=100000686899395" target="_blank" class="hover:text-white underline">Facebook</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
