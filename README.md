@@ -1,2 +1,3 @@
 # photo
-Store auto photo split from file
+This project for auto photo split from file using AI.
+For education and research only.
